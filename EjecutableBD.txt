@@ -1,0 +1,267 @@
+create database puntoVenta
+GO
+use puntoVenta;
+GO
+
+create table Sucursal
+(
+id int identity (101, 1) primary key,
+nombre varchar(50) not null,
+domicilio varchar(50),
+estatus bit not null,
+)
+GO
+
+create table Producto
+(
+id int identity (01, 1) primary key,
+nombre varchar(50) not null,
+precio float,
+estatus bit not null,
+)
+GO
+
+create table Venta
+(
+folioVenta int identity (1001, 1) primary key,
+sucursal_id int,
+subtotal float,
+IVA float,
+total float,
+fechaVenta date,
+
+CONSTRAINT FK_Venta_Sucursal
+FOREIGN KEY (sucursal_id) REFERENCES Sucursal(id)
+    ON UPDATE CASCADE
+	ON DELETE CASCADE
+)
+GO
+
+create table detalleVenta
+(
+folioVenta_id int,
+producto_id int,
+precio float,
+cantidad int,
+importe float,
+
+CONSTRAINT FK_detalleVenta_Venta
+FOREIGN KEY (folioVenta_id) REFERENCES Venta(folioVenta)
+    ON UPDATE CASCADE
+	ON DELETE CASCADE,
+
+CONSTRAINT FK_detalleVenta_Producto
+FOREIGN KEY (producto_id) REFERENCES Producto(id)
+    ON UPDATE CASCADE
+	ON DELETE CASCADE
+)
+GO
+
+create table usuarios
+(
+id int identity (401, 1) primary key,
+usuario varchar(15),
+contraseña varchar(20)
+)
+GO
+
+insert into usuarios values('Iradio','12345');
+insert into usuarios values('Eduardo','54321');
+GO
+insert into Sucursal values ('Sucursal 1', 'Infonavit Humaya, Culiacán, Sinaloa', 1);
+insert into Sucursal values ('Sucursal 2', 'Bachihualato, Culiacán, Sinaloa', 1);
+GO
+insert into Producto values ('Huevito de leche', 15, 1);
+insert into Producto values ('Coca Cola 600ml', 14, 1);
+GO
+
+
+CREATE PROCEDURE Obtener_Usuarios
+@id int,
+@usuario varchar(15),
+@contraseña varchar(20)
+as
+begin
+Select * from usuarios where usuario= @usuario AND contraseña= @contraseña
+end
+GO
+
+CREATE PROCEDURE Insertar_Venta
+(
+@sucursal_id int,
+@fechaVenta date
+)
+as
+begin
+insert into Venta ( sucursal_id, subtotal, IVA, total, fechaVenta)
+values (@sucursal_id,0,0,0,@fechaVenta)
+end
+GO
+
+CREATE PROCEDURE Insertar_DetalleVenta
+(
+@folioVenta_id int,
+@producto_id int,
+@precio float,
+@cantidad int,
+@importe float
+)
+as
+begin
+insert into detalleVenta (folioVenta_id, producto_id, precio, cantidad, importe)
+values (@folioVenta_id,@producto_id,@precio,@cantidad,@importe)
+end
+GO
+
+CREATE PROCEDURE Insertar_Sucursal
+(
+@nombre varchar(50),
+@domicilio varchar(50),
+@estatus bit
+)
+as
+begin
+insert into Sucursal (nombre, domicilio, estatus)
+values (@nombre,@domicilio,@estatus)
+end
+GO
+
+CREATE PROCEDURE Insertar_Producto
+(
+@nombre varchar(50),
+@precio float,
+@estatus bit
+)
+as
+begin
+insert into Producto (nombre, precio, estatus)
+values (@nombre,@precio,@estatus)
+end
+GO
+
+CREATE PROCEDURE Modificar_Venta
+(
+@folioVenta int,
+@sucursal_id int,
+@subtotal float,
+@IVA float,
+@total float,
+@fechaVenta date
+)
+as
+begin
+Update Venta 
+set 
+sucursal_id=@sucursal_id,
+subtotal=@subtotal,
+IVA=@IVA,
+total=@total,
+fechaVenta=@fechaVenta
+where folioVenta=@folioVenta
+end
+GO
+
+CREATE PROCEDURE Modificar_DetalleVenta
+(
+@folioVenta_id int,
+@producto_id int,
+@precio float,
+@cantidad int,
+@importe float
+)
+as
+begin
+Update detalleVenta 
+set 
+precio=@precio,
+cantidad=@cantidad,
+importe=@importe
+where folioVenta_id=@folioVenta_id AND producto_id=@producto_id
+end
+GO
+
+CREATE PROCEDURE Modificar_Sucursal
+(
+@id int,
+@nombre varchar(50),
+@domicilio varchar(50),
+@estatus bit
+)
+as
+begin
+Update Sucursal 
+set 
+nombre=@nombre,
+domicilio=@domicilio,
+estatus=@estatus
+where id=@id
+end
+GO
+
+CREATE PROCEDURE Modificar_Producto
+(
+@id int,
+@nombre varchar(50),
+@precio float,
+@estatus bit
+)
+as
+begin
+Update Producto 
+set 
+nombre=@nombre,
+precio=@precio,
+estatus=@estatus
+where id=@id
+end
+GO
+
+CREATE PROCEDURE Eliminar_DetalleVenta
+@folioVenta_id int,
+@producto_id int
+as
+begin
+    delete from detalleVenta
+    where folioVenta_id=@folioVenta_id AND producto_id=@producto_id
+end
+GO
+
+Create procedure Ventas_Por_Folio
+(
+@FolioVenta_id int
+)
+as 
+select * from detalleVenta where folioVenta_id=@FolioVenta_id
+GO
+
+Create procedure TotVen_Fecha
+(
+@fechaIni date,
+@fechaFin date
+)
+as 
+Select v.sucursal_id,count(v.folioVenta) AS Ventas_Realizadas
+From Venta v
+Where v.fechaVenta BETWEEN @fechaIni AND @fechaFin
+Group by v.sucursal_id
+GO
+
+Create procedure VenGen_Fecha
+(
+@fechaVenta date
+)
+as 
+Select *
+From Venta 
+Where fechaVenta=@fechaVenta
+GO
+
+CREATE PROCEDURE Top_Producto
+as
+SELECT TOP(3) WITH TIES p.nombre, SUM(d.cantidad) AS [CantidadT]
+FROM
+    detalleVenta d
+    INNER JOIN Producto p ON d.producto_id = p.id
+GROUP BY d.producto_id, p.nombre
+ORDER BY CantidadT DESC;
+GO
